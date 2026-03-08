@@ -8,6 +8,7 @@ import { radius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { softShadow } from '../theme/shadow';
 import { Ionicons } from '@expo/vector-icons';
+import { buildWebsiteIcon } from '../utils/website';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -23,6 +24,14 @@ export const LauncherTile = ({ item, onPress, onLongPress, onDrag }: Props) => {
   const scale = useSharedValue(1);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const displayIcon = useMemo(() => {
+    if (item.kind !== 'website') return item.icon;
+    if ('uri' in item.icon) return item.icon;
+    if (item.icon.set === 'Ionicons' && (item.icon.name === 'apps' || item.icon.name === 'globe-outline')) {
+      return buildWebsiteIcon(item.target) ?? item.icon;
+    }
+    return item.icon;
+  }, [item]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
@@ -42,7 +51,7 @@ export const LauncherTile = ({ item, onPress, onLongPress, onDrag }: Props) => {
       style={[styles.tile, animatedStyle]}
     >
       <View style={styles.iconWrap}>
-        <Icon icon={item.icon} size={32} />
+        <Icon icon={displayIcon} size={32} />
       </View>
       <Text numberOfLines={1} style={styles.label}>
         {item.name}

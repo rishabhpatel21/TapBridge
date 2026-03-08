@@ -13,6 +13,7 @@ export type ImageIconSpec = {
   type: 'image';
   uri: string;
   backgroundColor?: string;
+  auto?: boolean;
 };
 
 export type IconSpec = VectorIconSpec | ImageIconSpec;

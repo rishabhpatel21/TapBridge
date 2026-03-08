@@ -17,10 +17,12 @@ import { typography } from '../theme/typography';
 import { Icon } from './Icon';
 import { IconPicker } from './IconPicker';
 import { createId } from '../utils/id';
+import { buildWebsiteIcon } from '../utils/website';
 import { useConnectionContext } from '../state/ConnectionContext';
 import { AppPickerModal } from './AppPickerModal';
 
 const defaultIcon: IconSpec = { set: 'Ionicons', name: 'apps', color: '#7fe5ff' };
+const defaultWebsiteIcon: IconSpec = { set: 'Ionicons', name: 'globe-outline', color: '#7fe5ff' };
 
 type Props = {
   visible: boolean;
@@ -37,6 +39,7 @@ export const AddEditModal = ({ visible, initialItem, onClose, onSave, onDelete }
   const [icon, setIcon] = useState<IconSpec>(defaultIcon);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showAppPicker, setShowAppPicker] = useState(false);
+  const [iconTouched, setIconTouched] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -48,11 +51,17 @@ export const AddEditModal = ({ visible, initialItem, onClose, onSave, onDelete }
       setKind(initialItem.kind);
       setTarget(initialItem.target);
       setIcon(initialItem.icon ?? defaultIcon);
+      if ('uri' in initialItem.icon && initialItem.icon.auto) {
+        setIconTouched(false);
+      } else {
+        setIconTouched(true);
+      }
     } else {
       setName('');
       setKind('app');
       setTarget('');
       setIcon(defaultIcon);
+      setIconTouched(false);
     }
   }, [initialItem, visible]);
 
@@ -61,12 +70,16 @@ export const AddEditModal = ({ visible, initialItem, onClose, onSave, onDelete }
   const handleSave = () => {
     const trimmedName = name.trim() || 'Untitled';
     const trimmedTarget = target.trim();
+    let nextIcon = icon;
+    if (kind === 'website' && !iconTouched) {
+      nextIcon = buildWebsiteIcon(trimmedTarget) ?? defaultWebsiteIcon;
+    }
     const item: LauncherItem = {
       id: initialItem?.id ?? createId(),
       name: trimmedName,
       kind,
       target: trimmedTarget,
-      icon
+      icon: nextIcon
     };
     onSave(item);
     onClose();
@@ -88,6 +101,17 @@ export const AddEditModal = ({ visible, initialItem, onClose, onSave, onDelete }
     setShowAppPicker(false);
     onClose();
   };
+
+  useEffect(() => {
+    if (kind !== 'website') return;
+    if (iconTouched) return;
+    const auto = buildWebsiteIcon(target);
+    if (auto) {
+      setIcon(auto);
+    } else {
+      setIcon(defaultWebsiteIcon);
+    }
+  }, [kind, target, iconTouched]);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -119,7 +143,15 @@ export const AddEditModal = ({ visible, initialItem, onClose, onSave, onDelete }
                 <Pressable
                   key={value}
                   style={[styles.segment, kind === value && styles.segmentActive]}
-                  onPress={() => setKind(value)}
+                  onPress={() => {
+                    setKind(value);
+                    if (value === 'website' && !iconTouched) {
+                      setIcon(defaultWebsiteIcon);
+                    }
+                    if (value === 'app' && !iconTouched) {
+                      setIcon(defaultIcon);
+                    }
+                  }}
                 >
                   <View style={styles.segmentContent}>
                     <Ionicons
@@ -194,7 +226,14 @@ export const AddEditModal = ({ visible, initialItem, onClose, onSave, onDelete }
         </KeyboardAvoidingView>
       </View>
 
-      <IconPicker visible={showIconPicker} onClose={() => setShowIconPicker(false)} onSelect={setIcon} />
+      <IconPicker
+        visible={showIconPicker}
+        onClose={() => setShowIconPicker(false)}
+        onSelect={(nextIcon) => {
+          setIconTouched(true);
+          setIcon(nextIcon);
+        }}
+      />
       <AppPickerModal
         visible={showAppPicker}
         apps={apps}
