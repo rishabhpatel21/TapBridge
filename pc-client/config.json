@@ -1,0 +1,30 @@
+{
+  "port": 5050,
+  "allowUnregistered": true,
+  "launchers": [
+    {
+      "id": "brave",
+      "name": "Brave Web Browser",
+      "kind": "app",
+      "target": "/usr/bin/brave-browser"
+    },
+    {
+      "id": "vscode",
+      "name": "VS Code",
+      "kind": "app",
+      "target": "code"
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "kind": "website",
+      "target": "https://youtube.com"
+    },
+    {
+      "id": "docs",
+      "name": "Google Docs",
+      "kind": "website",
+      "target": "https://docs.google.com"
+    }
+  ]
+}
