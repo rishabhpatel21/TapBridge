@@ -1,19 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ClientMessage, ServerMessage } from '../types/ws';
+import { ClientMessage, ServerMessage, WireClientMessage } from '../types/ws';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 type Options = {
   onMessage?: (message: ServerMessage) => void;
   pingIntervalMs?: number;
+  authToken?: string;
+  scheme?: 'ws' | 'wss';
 };
 
-export const useWebSocketClient = ({ onMessage, pingIntervalMs = 10000 }: Options = {}) => {
+export const useWebSocketClient = ({
+  onMessage,
+  pingIntervalMs = 10000,
+  authToken,
+  scheme = 'ws'
+}: Options = {}) => {
   const wsRef = useRef<WebSocket | null>(null);
   const pingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentUrlRef = useRef<string | null>(null);
   const onMessageRef = useRef<Options['onMessage']>(onMessage);
   const statusRef = useRef<ConnectionStatus>('disconnected');
+  const authTokenRef = useRef<string | null>(authToken?.trim() || null);
+  const schemeRef = useRef<'ws' | 'wss'>(scheme);
 
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [lastError, setLastError] = useState<string | undefined>(undefined);
@@ -21,6 +30,14 @@ export const useWebSocketClient = ({ onMessage, pingIntervalMs = 10000 }: Option
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+
+  useEffect(() => {
+    authTokenRef.current = authToken?.trim() || null;
+  }, [authToken]);
+
+  useEffect(() => {
+    schemeRef.current = scheme;
+  }, [scheme]);
 
   useEffect(() => {
     statusRef.current = status;
@@ -38,10 +55,39 @@ export const useWebSocketClient = ({ onMessage, pingIntervalMs = 10000 }: Option
     currentUrlRef.current = null;
   }, []);
 
+  const buildWireMessage = useCallback(
+    (message: ClientMessage): WireClientMessage | null => {
+      const token = authTokenRef.current;
+      if (!token) {
+        setLastError('Pairing token required. Scan the QR or paste the token.');
+        return null;
+      }
+      return { ...message, auth: { token } };
+    },
+    []
+  );
+
+  const sendOverSocket = useCallback(
+    (ws: WebSocket, message: ClientMessage) => {
+      const wireMessage = buildWireMessage(message);
+      if (!wireMessage) return false;
+      ws.send(JSON.stringify(wireMessage));
+      return true;
+    },
+    [buildWireMessage]
+  );
+
   const connect = useCallback(
     (ip: string, port: number) => {
       if (!ip) return;
-      const url = `ws://${ip}:${port}`;
+      const token = authToken?.trim() || authTokenRef.current;
+      if (!token) {
+        setLastError('Pairing token required. Scan the QR or paste the token.');
+        setStatus('error');
+        return;
+      }
+      authTokenRef.current = token;
+      const url = `${schemeRef.current}://${ip}:${port}`;
       const existing = wsRef.current;
       if (
         existing &&
@@ -64,7 +110,7 @@ export const useWebSocketClient = ({ onMessage, pingIntervalMs = 10000 }: Option
         setStatus('connected');
         pingTimer.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping' } satisfies ClientMessage));
+            sendOverSocket(ws, { type: 'ping' });
           }
         }, pingIntervalMs);
       };
@@ -101,7 +147,7 @@ export const useWebSocketClient = ({ onMessage, pingIntervalMs = 10000 }: Option
         currentUrlRef.current = null;
       };
     },
-    [cleanup, pingIntervalMs]
+    [cleanup, pingIntervalMs, sendOverSocket]
   );
 
   const disconnect = useCallback(() => {
@@ -115,9 +161,8 @@ export const useWebSocketClient = ({ onMessage, pingIntervalMs = 10000 }: Option
       setLastError('Not connected');
       return false;
     }
-    ws.send(JSON.stringify(message));
-    return true;
-  }, []);
+    return sendOverSocket(ws, message);
+  }, [sendOverSocket]);
 
   useEffect(() => () => cleanup(), [cleanup]);
 

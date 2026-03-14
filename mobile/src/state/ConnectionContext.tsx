@@ -9,6 +9,8 @@ const DEFAULT_PORT = 5050;
 type ConnectionContextValue = {
   ip: string;
   port: number;
+  token: string;
+  useTls: boolean;
   status: ConnectionStatus;
   lastError?: string;
   apps: AppEntry[];
@@ -16,12 +18,14 @@ type ConnectionContextValue = {
   iconsLoading: boolean;
   iconsTotal: number;
   appsError?: string;
-  connect: (nextIp?: string, nextPort?: number) => void;
+  connect: (nextIp?: string, nextPort?: number, nextToken?: string, nextUseTls?: boolean) => void;
   disconnect: () => void;
   send: (message: ClientMessage) => boolean;
   requestApps: (includeIcons?: boolean) => void;
   setIp: (value: string) => void;
   setPort: (value: number) => void;
+  setToken: (value: string) => void;
+  setUseTls: (value: boolean) => void;
 };
 
 const ConnectionContext = createContext<ConnectionContextValue | undefined>(undefined);
@@ -29,6 +33,8 @@ const ConnectionContext = createContext<ConnectionContextValue | undefined>(unde
 export const ConnectionProvider = ({ children }: { children: React.ReactNode }) => {
   const [ip, setIp] = useState('');
   const [port, setPort] = useState(DEFAULT_PORT);
+  const [token, setToken] = useState('');
+  const [useTls, setUseTls] = useState(false);
   const [apps, setApps] = useState<AppEntry[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
   const [iconsLoading, setIconsLoading] = useState(false);
@@ -36,6 +42,7 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
   const [appsError, setAppsError] = useState<string | undefined>(undefined);
   const [iconCache, setIconCache] = useState<Record<string, string>>({});
   const [pendingAppsRequest, setPendingAppsRequest] = useState<null | { includeIcons: boolean }>(null);
+  const [pendingConnect, setPendingConnect] = useState<null | { ip: string; port: number }>(null);
   const requestAppsRef = useRef<(includeIcons?: boolean) => void>();
   const lastAppsChangeRef = useRef(0);
   const appsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,7 +129,11 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
     [appsLoading, iconsLoading, clearAppsTimeout, clearIconsTimeout]
   );
 
-  const { status, lastError, connect, disconnect, send } = useWebSocketClient({ onMessage: handleMessage });
+  const { status, lastError, connect, disconnect, send } = useWebSocketClient({
+    onMessage: handleMessage,
+    authToken: token,
+    scheme: useTls ? 'wss' : 'ws'
+  });
 
   useEffect(() => {
     if (status !== 'connected') {
@@ -139,10 +150,14 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (!mounted || !raw) return;
-        const parsed = JSON.parse(raw) as { ip?: string; port?: number };
+        const parsed = JSON.parse(raw) as { ip?: string; port?: number; token?: string; useTls?: boolean };
         if (parsed.ip) setIp(parsed.ip);
         if (parsed.port) setPort(parsed.port);
-        if (parsed.ip) connect(parsed.ip, parsed.port ?? DEFAULT_PORT);
+        if (parsed.token) setToken(parsed.token);
+        if (typeof parsed.useTls === 'boolean') setUseTls(parsed.useTls);
+        if (parsed.ip) {
+          setPendingConnect({ ip: parsed.ip, port: parsed.port ?? DEFAULT_PORT });
+        }
       } catch {
         // ignore
       }
@@ -152,20 +167,41 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
     return () => {
       mounted = false;
     };
-  }, [connect]);
+  }, []);
 
-  const persist = useCallback(async (nextIp: string, nextPort: number) => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ip: nextIp, port: nextPort }));
+  useEffect(() => {
+    if (!pendingConnect) return;
+    if (!pendingConnect.ip) {
+      setPendingConnect(null);
+      return;
+    }
+    if (!token) {
+      setPendingConnect(null);
+      return;
+    }
+    connect(pendingConnect.ip, pendingConnect.port);
+    setPendingConnect(null);
+  }, [pendingConnect, token, connect]);
+
+  const persist = useCallback(async (nextIp: string, nextPort: number, nextToken: string, nextUseTls: boolean) => {
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ip: nextIp, port: nextPort, token: nextToken, useTls: nextUseTls })
+    );
   }, []);
 
   const connectToServer = useCallback(
-    (nextIp = ip, nextPort = port) => {
+    (nextIp = ip, nextPort = port, nextToken = token, nextUseTls = useTls) => {
       setIp(nextIp);
       setPort(nextPort);
-      connect(nextIp, nextPort);
-      persist(nextIp, nextPort);
+      setToken(nextToken);
+      setUseTls(nextUseTls);
+      if (nextIp) {
+        setPendingConnect({ ip: nextIp, port: nextPort });
+      }
+      persist(nextIp, nextPort, nextToken, nextUseTls);
     },
-    [ip, port, connect, persist]
+    [ip, port, token, useTls, persist]
   );
 
   const requestApps = useCallback(
@@ -255,6 +291,8 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
     () => ({
       ip,
       port,
+      token,
+      useTls,
       status,
       lastError,
       apps,
@@ -267,11 +305,15 @@ export const ConnectionProvider = ({ children }: { children: React.ReactNode }) 
       send,
       requestApps,
       setIp,
-      setPort
+      setPort,
+      setToken,
+      setUseTls
     }),
     [
       ip,
       port,
+      token,
+      useTls,
       status,
       lastError,
       apps,

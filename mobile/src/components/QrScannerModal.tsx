@@ -9,10 +9,10 @@ import { typography } from '../theme/typography';
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onPair: (ip: string, port: number) => void;
+  onPair: (ip: string, port: number, token?: string, useTls?: boolean) => void;
 };
 
-const parsePairingData = (data: string): { ip: string; port: number } | null => {
+const parsePairingData = (data: string): { ip: string; port: number; token?: string; useTls?: boolean } | null => {
   if (!data) return null;
 
   try {
@@ -20,27 +20,33 @@ const parsePairingData = (data: string): { ip: string; port: number } | null => 
       const url = new URL(data);
       const ip = url.searchParams.get('ip');
       const port = Number(url.searchParams.get('port') ?? 0);
-      if (ip && port) return { ip, port };
+      const token = url.searchParams.get('token') ?? undefined;
+      const tlsParam = url.searchParams.get('tls');
+      const useTls = tlsParam === '1' || tlsParam === 'true';
+      if (ip && port) return { ip, port, token, useTls };
     }
   } catch {
     // ignore
   }
 
   try {
-    const parsed = JSON.parse(data) as { ip?: string; port?: number };
+    const parsed = JSON.parse(data) as { ip?: string; port?: number; token?: string; tls?: boolean; scheme?: string };
     if (parsed.ip && parsed.port) {
-      return { ip: parsed.ip, port: Number(parsed.port) };
+      const useTls = parsed.tls === true || parsed.scheme === 'wss';
+      return { ip: parsed.ip, port: Number(parsed.port), token: parsed.token, useTls };
     }
   } catch {
     // ignore
   }
 
-  if (data.startsWith('ws://')) {
+  if (data.startsWith('ws://') || data.startsWith('wss://')) {
     try {
       const url = new URL(data);
       const ip = url.hostname;
       const port = Number(url.port ?? 0);
-      if (ip && port) return { ip, port };
+      const token = url.searchParams.get('token') ?? undefined;
+      const useTls = url.protocol === 'wss:';
+      if (ip && port) return { ip, port, token, useTls };
     } catch {
       // ignore
     }
@@ -82,7 +88,7 @@ export const QrScannerModal = ({ visible, onClose, onPair }: Props) => {
       return;
     }
     setScanned(true);
-    onPair(parsed.ip, parsed.port);
+    onPair(parsed.ip, parsed.port, parsed.token, parsed.useTls);
   };
 
   return (
