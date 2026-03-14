@@ -1,5 +1,6 @@
 {
   "port": 5050,
+  "authToken": "CHANGE_ME",
   "allowUnregistered": true,
   "launchers": [
     {

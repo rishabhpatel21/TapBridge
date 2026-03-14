@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View
@@ -24,7 +25,8 @@ import { QrScannerModal } from '../components/QrScannerModal';
 type Props = NativeStackScreenProps<RootStackParamList, 'Connection'>;
 
 const ConnectionScreen = ({ navigation }: Props) => {
-  const { ip, port, setIp, setPort, status, connect, lastError } = useConnectionContext();
+  const { ip, port, token, useTls, setIp, setPort, setToken, setUseTls, status, connect, lastError } =
+    useConnectionContext();
   const { colors } = useTheme();
   const fade = useRef(new Animated.Value(0)).current;
   const lift = useRef(new Animated.Value(16)).current;
@@ -97,6 +99,29 @@ const ConnectionScreen = ({ navigation }: Props) => {
             />
           </View>
 
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Pairing Token</Text>
+            <TextInput
+              value={token}
+              onChangeText={setToken}
+              placeholder="Scan QR or paste token"
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Secure TLS (wss)</Text>
+            <Switch
+              value={useTls}
+              onValueChange={setUseTls}
+              trackColor={{ false: colors.outlineStrong, true: colors.accent }}
+              thumbColor={colors.bg}
+            />
+          </View>
+
           {lastError ? <Text style={styles.errorText}>{lastError}</Text> : null}
 
           <Pressable
@@ -127,11 +152,9 @@ const ConnectionScreen = ({ navigation }: Props) => {
       <QrScannerModal
         visible={showQr}
         onClose={() => setShowQr(false)}
-        onPair={(nextIp, nextPort) => {
-          setIp(nextIp);
-          setPort(nextPort);
+        onPair={(nextIp, nextPort, nextToken, nextUseTls) => {
           setShowQr(false);
-          connect(nextIp, nextPort);
+          connect(nextIp, nextPort, nextToken ?? token, nextUseTls ?? useTls);
         }}
       />
     </LinearGradient>
@@ -224,6 +247,22 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     paddingHorizontal: spacing.md,
     color: colors.textPrimary,
     marginBottom: spacing.sm
+  },
+  toggleRow: {
+    height: 46,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.outlineStrong,
+    backgroundColor: colors.glass,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm
+  },
+  toggleLabel: {
+    ...typography.body,
+    color: colors.textPrimary
   },
   errorText: {
     marginTop: spacing.xs,

@@ -21,6 +21,18 @@ export type ServerConfig = {
   port: number;
   allowUnregistered?: boolean;
   launchers: LauncherItem[];
+  authToken?: string;
+  tls?: {
+    keyPath: string;
+    certPath: string;
+    caPath?: string;
+  };
+  security?: {
+    maxMessageBytes?: number;
+    rateLimitWindowMs?: number;
+    rateLimitMaxMessages?: number;
+    maxInvalidMessages?: number;
+  };
 };
 
 export type ClientMessage =
@@ -35,6 +47,12 @@ export type ClientMessage =
       };
     }
   | { type: 'list_apps'; payload?: { includeIcons?: boolean } };
+
+export type AuthPayload = {
+  token: string;
+};
+
+export type WireClientMessage = ClientMessage & { auth: AuthPayload };
 
 export type ServerMessage =
   | { type: 'pong'; payload: { ts: number } }

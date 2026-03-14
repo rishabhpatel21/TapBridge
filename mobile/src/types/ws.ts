@@ -32,6 +32,12 @@ export type ListAppsMessage = {
 
 export type ClientMessage = LaunchMessage | PingMessage | ListAppsMessage;
 
+export type AuthPayload = {
+  token: string;
+};
+
+export type WireClientMessage = ClientMessage & { auth: AuthPayload };
+
 export type ServerMessage =
   | { type: 'pong'; payload?: { ts: number } }
   | { type: 'status'; payload: { ok: boolean; message?: string } }
