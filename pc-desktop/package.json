@@ -1,0 +1,57 @@
+{
+  "name": "tapbridge-pc-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "electron src/dev-main.cjs",
+    "build:server": "npm --prefix ../pc-client run build",
+    "build": "npm run build:server && tsc -p .",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "electron": "^31.2.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "electron-builder": "^24.13.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.2"
+  },
+  "build": {
+    "appId": "com.tapbridge.desktop",
+    "productName": "TapBridge",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "dist/**/*",
+      "src/renderer/**/*",
+      "src/preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../pc-client/dist",
+        "to": "server/dist"
+      },
+      {
+        "from": "../pc-client/config.json",
+        "to": "server/config.json"
+      }
+    ],
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}
