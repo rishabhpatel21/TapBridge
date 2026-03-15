@@ -1,32 +1,33 @@
 # TapBridge
 
-TapBridge lets you launch desktop apps and websites from a React Native mobile app over your local network.
+Launch desktop apps and websites from your phone over your local network. TapBridge is designed to be fast, secure, and fully local — no cloud required.
 
-**Project Goal**
-Provide a fast, secure, and simple “remote launcher” that keeps control and data on your own devices.
+## What You Ship for Production
+TapBridge is a **two‑app product**:
+1. **Desktop App (Electron)** — runs the PC server and shows a pairing QR.
+2. **Mobile App (Expo)** — pairs via QR and sends launch commands.
 
-**Primary Use**
-Trigger desktop apps or websites from your phone while both devices are on the same network.
+Users install the desktop app on their computer and the mobile app on their phone. Pairing is done **only by scanning the QR**.
 
-**How It Works**
-1. The PC runs a WebSocket server that exposes a controlled set of launchers.
-2. The mobile app connects over the LAN, authenticates with a pairing token, and sends commands.
-3. The PC validates each request and launches the app or URL.
+## How It Works
+1. The desktop app starts the local WebSocket server.
+2. The server generates a pairing token.
+3. The desktop app shows a QR that includes IP, port, and token.
+4. The mobile app scans the QR and connects.
 
-## Structure
+## Repository Structure
+- `pc-desktop/` Electron desktop app (production PC client)
+- `pc-client/` Node.js server (bundled inside the desktop app)
 - `mobile/` Expo React Native app
-- `pc-client/` Node.js WebSocket service
 
-## Requirements
-- Node.js + npm for `pc-client/`
-- Expo toolchain for `mobile/`
-- PC and mobile on the same LAN
-- Firewall rule allowing inbound connections on the chosen port
+## Requirements (Dev)
+- Node.js + npm
+- Expo toolchain (mobile)
 
-## Quick Start (Development)
-PC server:
+## Development Setup
+Desktop app:
 ```bash
-cd pc-client
+cd pc-desktop
 npm install
 npm run dev
 ```
@@ -38,10 +39,34 @@ npm install
 npm run start
 ```
 
-## Configuration
-PC server config: `pc-client/config.json`
+## Production Builds
+Desktop installers (Windows/macOS/Linux):
+```bash
+cd pc-desktop
+npm install
+npm run dist
+```
 
-Example:
+Installers are created in `pc-desktop/dist`.
+
+Mobile releases:
+```bash
+cd mobile
+npm install
+npx expo login
+npx eas build:configure
+npx eas build --platform android --profile production
+npx eas build --platform ios --profile production
+```
+
+## Pairing (QR‑Only)
+1. Install and open the desktop app.
+2. Scan the QR code using the mobile app.
+3. Connection is automatic — no manual IP/port/token required.
+
+## Configuration (Desktop Server)
+The desktop app bundles `pc-client/config.json`. You can still customize it before packaging:
+
 ```json
 {
   "port": 5050,
@@ -53,12 +78,6 @@ Example:
       "name": "Brave Web Browser",
       "kind": "app",
       "target": "/usr/bin/brave-browser"
-    },
-    {
-      "id": "youtube",
-      "name": "YouTube",
-      "kind": "website",
-      "target": "https://youtube.com"
     }
   ],
   "tls": {
@@ -75,83 +94,32 @@ Example:
 }
 ```
 
-**Config fields**
-- `port`: WebSocket port.
-- `authToken`: Required token for pairing and every request. Use a strong value.
-- `allowUnregistered`: If `false`, only launchers in `launchers` are allowed.
-- `launchers`: Explicit app/website entries that can be launched.
-- `tls`: Optional TLS config for `wss://`.
-- `security`: Optional rate limits and size caps.
+### Key Options
+- `authToken`: Required for every request. The QR embeds it for pairing.
+- `allowUnregistered`: Set `false` to enforce a strict allow‑list.
+- `launchers`: Explicit apps/websites that can be launched.
+- `tls`: Optional `wss://` support for encrypted LAN traffic.
+- `security`: Rate limits and payload caps.
 
-**Environment variables**
-- `TAPBRIDGE_CONFIG`: Path to the config file.
-- `TAPBRIDGE_AUTH_TOKEN`: Overrides `authToken` from config.
+### Environment Variables
+- `TAPBRIDGE_AUTH_TOKEN`: Overrides `authToken`
+- `TAPBRIDGE_CONFIG`: Custom config path
 
-## Pairing
-1. Start the PC server.
-2. Scan the terminal QR in the mobile app.
-3. If pairing manually, enter IP, port, token, and toggle “Secure TLS (wss)” when applicable.
-
-## Security Measures
-- **Per‑message auth**: Each client message includes the pairing token.
-- **Strict validation**: Payloads are validated before execution.
-- **Rate limiting**: Excessive requests are blocked.
-- **Message size caps**: Large payloads are rejected.
-- **Allow‑list support**: Disable `allowUnregistered` for strict control.
-- **Optional TLS**: Use `wss://` to encrypt traffic over the network.
-
-## Privacy
-- No cloud backend.
-- Pairing happens over the local network.
-- The PC server logs the connecting IP address and launch events.
-
-## API Protocol (WebSocket)
-All client messages include an `auth.token` field.
-
-Client message shape:
-```json
-{
-  "type": "list_apps",
-  "payload": { "includeIcons": true },
-  "auth": { "token": "YOUR_TOKEN" }
-}
-```
-
-Supported client message types:
-- `ping`
-- `list_apps`
-- `launch`
-
-Server message types:
-- `pong`
-- `status`
-- `error`
-- `apps`
-- `apps_changed`
-- `app_icons`
-- `app_icons_done`
-
-## Deployment Guidance
-**PC server**
-1. Set a strong `authToken`.
-2. Set `allowUnregistered: false` for a strict allow‑list.
-3. Enable TLS if the network is untrusted.
-4. Open the selected port only to your local network.
-5. Run the server as a background service on your OS.
-
-**Mobile app**
-1. Build a release using your preferred Expo workflow.
-2. Distribute through your internal process or app store pipeline.
+## Security Highlights
+- Per‑message authentication token
+- Strict payload validation
+- Rate limiting + message size caps
+- Optional TLS (`wss://`)
+- No cloud dependency
 
 ## Troubleshooting
-- **Unauthorized**: Token missing or incorrect. Re‑scan the QR or paste the token.
-- **Unable to reach server**: Check PC IP, port, firewall, and same‑network access.
-- **Rate limit exceeded**: Slow down requests or adjust `security` values.
-- **Icons not loading**: Retry with `includeIcons` and ensure the server is reachable.
+- **QR not showing**: Ensure the PC server is running and the desktop app can start it.
+- **Unauthorized**: Token mismatch — re‑scan the QR.
+- **No connection**: Check same Wi‑Fi and firewall rules.
 
 ## Notes
-- Launching apps is OS‑specific and depends on installed software paths.
-- If TLS is enabled, the mobile device must trust the certificate chain.
+- `pc-client/` is not distributed to users directly. It is bundled inside the desktop app.
+- If you choose to ship a standalone server later, you can use the service files in `pc-client/`.
 
 ## License
 See `LICENSE`.

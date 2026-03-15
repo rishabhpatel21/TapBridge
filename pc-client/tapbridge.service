@@ -1,0 +1,14 @@
+[Unit]
+Description=TapBridge PC Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/youruser/TapBridge/pc-client
+ExecStart=/usr/bin/node /home/youruser/TapBridge/pc-client/dist/index.js
+Environment=TAPBRIDGE_AUTH_TOKEN=YOUR_STRONG_TOKEN
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

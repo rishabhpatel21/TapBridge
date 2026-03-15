@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.tapbridge.pcserver</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/local/bin/node</string>
+      <string>/Users/youruser/TapBridge/pc-client/dist/index.js</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/youruser/TapBridge/pc-client</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>TAPBRIDGE_AUTH_TOKEN</key>
+      <string>YOUR_STRONG_TOKEN</string>
+    </dict>
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/youruser/Library/Logs/tapbridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/youruser/Library/Logs/tapbridge.err</string>
+  </dict>
+</plist>

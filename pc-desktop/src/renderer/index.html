@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TapBridge</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        --bg: #0f172a;
+        --card: #111827;
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px circle at 10% 10%, #1e293b, #0f172a);
+        color: var(--text);
+      }
+      .container {
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 16px;
+        border: 1px solid #1f2937;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        margin-top: 8px;
+      }
+      .qr {
+        margin-top: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .qr img {
+        width: 240px;
+        height: 240px;
+        background: #fff;
+        padding: 8px;
+        border-radius: 12px;
+      }
+      .value {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      .chip {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(56, 189, 248, 0.16);
+        color: var(--accent);
+        font-size: 12px;
+      }
+      .message {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <div class="title">TapBridge PC Server</div>
+        <div class="subtitle">Keep this running to allow mobile pairing.</div>
+        <div class="row">
+          <span>Status</span>
+          <span class="chip" id="status">starting</span>
+        </div>
+        <!-- <div class="message" id="message"></div> -->
+        <div class="qr">
+          <img id="qr" alt="Pairing QR" />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">Connect From Mobile</div>
+        <div class="subtitle">Scan the QR in the mobile app to pair.</div>
+        <div class="hint">Make sure both devices are on the same Wi‑Fi.</div>
+      </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
